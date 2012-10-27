@@ -1,6 +1,7 @@
 ;; https://github.com/alexanderhiam/PyBBIO
 (ns blackbox.gpio
-  (:require [clojure.java.io :as io]))
+  (:require [clojure.java.io :as io])
+  (:import (java.util.concurrent LinkedBlockingQueue)))
 
 ;; https://github.com/hiredman/beaglebone-jni-utils
 (let [f (java.io.File/createTempFile "libB" ".so")]
@@ -8,14 +9,15 @@
   (io/copy (io/input-stream (io/resource "libB.so")) f)
   (a.B/load (.getAbsolutePath f)))
 
-(def b (a.B.))
+(def b (delay (a.B.)))
 
 (def mmap-offset 0x44c00000)
 
 (def mmap-size (- 0x48ffffff mmap-offset))
 
 ;; N is the base address of nnmap'ed /dev/mem
-(defonce N (.mem b mmap-offset mmap-size))
+(defonce N (delay (.mem @b mmap-offset mmap-size)))
+(defonce queue (LinkedBlockingQueue.))
 
 (def conf-rx-active (bit-shift-left 1 5))
 (def conf-pullup (bit-shift-left 1 4))
@@ -26,6 +28,7 @@
 (def conf-gpio-output conf-gpio-mode)
 (def conf-gpio-input (+ conf-gpio-mode conf-rx-active))
 
+;; gpio chips
 (def gpio0 (- 0x44e07000 mmap-offset))
 (def gpio1 (- 0x4804c000 mmap-offset))
 (def gpio2 (- 0x481ac000 mmap-offset))
@@ -78,25 +81,33 @@
    "GPIO3_19" [gpio3, (bit-shift-left 1 19), "mcasp0_fsr"],
    "GPIO3_21" [gpio3, (bit-shift-left 1 21), "mcasp0_ahclkx"]})
 
+(defn gpio-chip [pin]
+  (nth (get gpio pin) 0))
+
+(defn gpio-address [pin]
+  (nth (get gpio pin) 1))
+
 (def us
   (.get (doto (.getDeclaredField sun.misc.Unsafe "theUnsafe")
           (.setAccessible true))
         nil))
 
+;; make unsigned?
 (defn get-reg
   ([address]
      (get-reg address 32))
   ([address length]
      (case (long length)
-       32 (.getInt ^sun.misc.Unsafe us (long (+ N address)))
-       16 (.getShort ^sun.misc.Unsafe us (long (+ N address))))))
+       32 (.getInt ^sun.misc.Unsafe us (long (+ @N address)))
+       16 (.getShort ^sun.misc.Unsafe us (long (+ @N address))))))
 
+;; make unsigned?
 (defn set-reg
   ([address value] (set-reg address value 32))
   ([address value length]
      (case (long length)
-       32 (.putInt ^sun.misc.Unsafe us (long (+ N address)) (int value))
-       16 (.putInt ^sun.misc.Unsafe us (long (+ N address)) (short value)))))
+       32 (.putInt ^sun.misc.Unsafe us (long (+ @N address)) (int value))
+       16 (.putInt ^sun.misc.Unsafe us (long (+ @N address)) (short value)))))
 
 (defn or-reg
   ([address mask] (or-reg address mask 32))
@@ -123,19 +134,19 @@
 
 (defn digital-write [pin state]
   (if state
-    (set-reg (+ (get (get gpio pin) 0)
+    (set-reg (+ (gpio-chip pin)
                 gpio-set-data-out)
-             (get (get gpio pin) 1))
-    (set-reg (+ (get (get gpio pin) 0)
+             (gpio-address pin))
+    (set-reg (+ (gpio-chip pin)
                 gpio-clear-data-out)
-             (get (get gpio pin) 1))))
+             (gpio-address pin))))
 
 (defn digital-read [pin]
   (not (zero?
         (bit-and (long (bit-and
-                        (get-reg (+ (get (get gpio pin) 0)
+                        (get-reg (+ (gpio-chip pin)
                                     gpio-data-in))
-                        (get (get gpio pin) 1)))
+                        (gpio-address pin)))
                  (int 0xfffffff)))))
 
 (def pin-mux-path "/sys/kernel/debug/omap_mux/")
@@ -153,15 +164,15 @@
                 :else conf-pulldown)]
       (pin-mux (get (get gpio pin) 2)
                (bit-or conf-gpio-input pull))
-      (or-reg (+ (get (get gpio pin) 0)
+      (or-reg (+ (gpio-chip pin)
                  gpio-oe)
-              (get (get gpio pin) 1)))
+              (gpio-address pin)))
     (do
       (pin-mux (get (get gpio pin) 2)
                conf-gpio-output)
-      (clear-reg (+ (get (get gpio pin) 0)
+      (clear-reg (+ (gpio-chip pin)
                     gpio-oe)
-                 (get (get gpio pin) 1)))))
+                 (gpio-address pin)))))
 
 (defprotocol IMux
   (mux! [_ direction pull])
@@ -210,12 +221,34 @@
                      :pull pull}))))
 
 (doseq [[pin & _] gpio]
-  (intern *ns*
-          (symbol (.toLowerCase pin))
-          (Pin. pin :out false nil))
-  (intern *ns*
-          (symbol pin)
-          (Pin. pin :out false nil)))
+  (let [p (->Pin pin :out false nil)]
+    (intern *ns* (symbol (.toLowerCase pin)) p)
+    (intern *ns* (symbol pin) p)))
 
 (defmethod print-method Pin [p writer]
   (.write writer (.toString p)))
+
+;; use an executor?
+(def event-loop (future
+                  (while true
+                    (try
+                      (let [f (.take queue)
+                            r (f)]
+                        (when-not (nil? r)
+                          (.put queue r)))
+                      (catch Exception _)))))
+
+(comment
+
+  (mux! gpio2_7 :out -1)
+  (mux! gpio2_6 :in -1)
+  (def f
+    (future
+      (while true
+        (try
+          (if @gpio2_6
+            (high! gpio2_7)
+            (low! gpio2_7))
+          (catch Exception _)))))
+
+  )
