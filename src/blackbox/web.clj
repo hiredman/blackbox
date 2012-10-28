@@ -3,15 +3,16 @@
             [compojure.route :as route]
             [compojure.core :refer :all]
             [hiccup.core :refer [html]]
-            [ring.middleware.resource :refer [wrap-resource]]
-            [blackbox.gpio]))
+            [ring.middleware.resource :refer [wrap-resource]]))
 
 (def take-picture
   "gst-launch v4l2src num-buffers=1 ! image/jpeg,width=640,height=480 ! jpegdec ! jpegenc ! filesink location=/tmp/blah.jpg")
 
 (defn view-port []
   (locking #'view-port
-    (.waitFor (.exec (Runtime/getRuntime) take-picture))
+    (let [p (.exec (Runtime/getRuntime) take-picture)]
+      (println (slurp (.getInputStream p)))
+      (.waitFor p))
     (io/file "/tmp/blah.jpg")))
 
 (defroutes handler*
@@ -34,9 +35,21 @@
        {:headers {"content-type" "application/json"}
         :body (view-port)})
   (GET "/pin/:pin" [pin]
-       (blackbox.gpio/flip!
+       (require 'blackbox.gpio)
+       ((resolve 'blackbox.gpio/flip!)
         @(ns-resolve 'blackbox.gpio
                      (symbol pin)))
+       {:status 200})
+  (GET "/read/:pin" [pin]
+       (require 'blackbox.gpio)
+       {:status 200
+        :body (str @@(ns-resolve 'blackbox.gpio
+                                 (symbol pin)))})
+  (GET "/move/:direction" [direction]
+       (println direction)
+       (require 'blackbox.drive)
+       ((ns-resolve 'blackbox.drive (symbol direction))
+        200)
        {:status 200}))
 
 
@@ -45,4 +58,10 @@
                  (wrap-resource "")))
 
 
-;; (blackbox.gpio/flip! blackbox.gpio/gpio2_9)
+(comment
+  (require 'blackbox.gpio)
+  (blackbox.gpio/flip! blackbox.gpio/gpio2_9)
+  (blackbox.gpio/mux! blackbox.gpio/gpio2_9 :out -1)
+  )
+
+
