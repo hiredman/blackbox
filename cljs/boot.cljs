@@ -17,7 +17,6 @@
     img))
 
 (defn ^:export main []
-  (log "main")
   (let [can (.getElementById js/document "snap")
         context (.getContext can "2d")]
     (.scale context scale-factor scale-factor)

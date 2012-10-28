@@ -31,7 +31,6 @@
                   [:br]
                   ]]])})
   (GET "/snap.jpg" []
-       (println "snap")
        {:headers {"content-type" "image/jpeg"}
         :body (view-port)})
   (GET "/pin/:pin" [pin]
