@@ -11,7 +11,6 @@
 (defn view-port []
   (locking #'view-port
     (let [p (.exec (Runtime/getRuntime) take-picture)]
-      (println (slurp (.getInputStream p)))
       (.waitFor p))
     (io/file "/tmp/blah.jpg")))
 
@@ -32,7 +31,8 @@
                   [:br]
                   ]]])})
   (GET "/snap.jpg" []
-       {:headers {"content-type" "application/json"}
+       (println "snap")
+       {:headers {"content-type" "image/jpeg"}
         :body (view-port)})
   (GET "/pin/:pin" [pin]
        (require 'blackbox.gpio)
