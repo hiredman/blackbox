@@ -1,18 +1,14 @@
 (ns blackbox.web
-  (:require [clojure.java.io :as io]
-            [compojure.route :as route]
+  (:require [compojure.route :as route]
             [compojure.core :refer :all]
             [hiccup.core :refer [html]]
-            [ring.middleware.resource :refer [wrap-resource]]))
-
-(def take-picture
-  "gst-launch v4l2src num-buffers=1 ! image/jpeg,width=640,height=480 ! jpegdec ! jpegenc ! filesink location=/tmp/blah.jpg")
+            [ring.middleware.resource :refer [wrap-resource]]
+            [blackbox.camera :as cam]))
 
 (defn view-port []
-  (locking #'view-port
-    (let [p (.exec (Runtime/getRuntime) take-picture)]
-      (.waitFor p))
-    (io/file "/tmp/blah.jpg")))
+  @cam/picture-loop
+  (while (nil? @cam/picture-file))
+  @cam/picture-file)
 
 (defroutes handler*
   (GET "/" []
