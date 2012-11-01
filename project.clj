@@ -17,9 +17,10 @@
   :min-lein-version "2.0.0"
   :plugins [[lein-ring "0.7.4"]
             [lein-cljsbuild "0.2.9"]]
-  :cljsbuild {:builds [{:source-path "cljs/"
-                        :notify-command ["growlnotify" "-m"]
-                        :compiler {:output-to "resources/boot.js"
-                                   :optimizations #_:whitespace :advanced
-                                   :pretty-print true}}]}
+  :cljsbuild {:builds {:main {:source-path "cljs/"
+                              :notify-command ["growlnotify" "-m"]
+                              :compiler {:output-to "resources/boot.js"
+                                         :optimizations #_:whitespace :advanced
+                                         :pretty-print true
+                                         :externs ["externs.js"]}}}}
   :aliases {"build" ["do" "cljsbuild" "once," "ring" "uberwar"]})

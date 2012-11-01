@@ -27,6 +27,12 @@
               (.drawImage context img 0 0)
               (reset! check 0))))))
 
+(def movement
+  {"up" "forward"
+   "down" "backward"
+   "left" "left"
+   "right" "right"})
+
 (defn ^:export main []
   (let [can (.getElementById js/document "snap")
         context (.getContext can "2d")]
@@ -38,7 +44,11 @@
        (when (> @check 3)
          (reset! check 0)
          (g context)))
-     1000)))
+     1000))
+  (doseq [[k v] movement]
+    (.bind js/Mousetrap k (fn [e]
+                            (.preventDefault e)
+                            (ping (str "move/" v))))))
 
 (defn ^:export led-flip []
   (ping "pin/gpio2_9"))
