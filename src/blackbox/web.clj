@@ -29,6 +29,16 @@
   (GET "/snap.jpg" []
        {:headers {"content-type" "image/jpeg"}
         :body (view-port)})
+  (GET "/video.ogg" []
+       {:status 200
+        :headers {"content-type" "video/ogg"
+                  "Cache-Control" "no-cache"}
+        :body (cam/video-stream)})
+  (GET "/mjpeg" []
+       {:status 200
+        :headers {"content-type" "multipart/x-mixed-replace; boundary=--spionisto"
+                  "Cache-Control" "no-cache"}
+        :body (cam/mjpeg-stream)})
   (GET "/pin/:pin" [pin]
        (require 'blackbox.gpio)
        ((resolve 'blackbox.gpio/flip!)
@@ -45,7 +55,8 @@
        (require 'blackbox.drive)
        ((ns-resolve 'blackbox.drive (symbol direction))
         200)
-       {:status 200}))
+       {:status 200})
+  (route/not-found "<h1>Page not found</h1>"))
 
 
 
