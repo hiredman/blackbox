@@ -34,17 +34,6 @@
    "right" "right"})
 
 (defn ^:export main []
-  (let [can (.getElementById js/document "snap")
-        context (.getContext can "2d")]
-    (.scale context scale-factor scale-factor)
-    (g context)
-    (js/setInterval
-     (fn []
-       (swap! check inc)
-       (when (> @check 3)
-         (reset! check 0)
-         (g context)))
-     1000))
   (doseq [[k v] movement]
     (.bind js/Mousetrap k (fn [e]
                             (.preventDefault e)
