@@ -32,16 +32,16 @@
     (flip! forward-pin)
     (flip! reverse-pin)))
 
-(mux! gpio1_2 :out -1)
-(mux! gpio1_7 :out -1)
-(mux! gpio1_13 :out -1)
-(mux! gpio1_12 :out -1)
+(mux! GPIO1_15 :out -1)
+(mux! GPIO1_14 :out -1)
+(mux! GPIO0_27 :out -1)
+(mux! GPIO2_1 :out -1)
 
 (def right-side
-  (Track. gpio1_7 gpio1_13))
+  (Track.  GPIO2_1 GPIO1_15))
 
 (def left-side
-  (Track. gpio1_12 gpio1_2))
+  (Track. GPIO1_14 GPIO0_27))
 
 (defn forward [n]
   (throw1 left-side)
