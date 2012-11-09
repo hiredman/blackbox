@@ -21,6 +21,6 @@
                               :notify-command ["growlnotify" "-m"]
                               :compiler {:output-to "resources/boot.js"
                                          :optimizations #_:whitespace :advanced
-                                         :pretty-print true
+                                         :pretty-print false
                                          :externs ["externs.js"]}}}}
   :aliases {"build" ["do" "cljsbuild" "once," "ring" "uberwar"]})
