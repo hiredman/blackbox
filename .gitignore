@@ -8,3 +8,5 @@
 /.lein-deps-sum
 /target
 /.lein-cljsbuild-compiler-0
+/resources/boot.js
+/.lein-plugins/checksum
