@@ -38,10 +38,10 @@
 (mux! GPIO2_1 :out -1)
 
 (def right-side
-  (Track.  GPIO2_1 GPIO1_15))
+  (Track. GPIO2_1 GPIO0_27))
 
 (def left-side
-  (Track. GPIO1_14 GPIO0_27))
+  (Track. GPIO1_14 GPIO1_15))
 
 (defn forward [n]
   (throw1 left-side)
