@@ -252,3 +252,40 @@
           (catch Exception _)))))
 
   )
+
+;;opkg install rxtx
+;;librxtx-java
+;;jdk1.7.0_06/bin/java -Djava.library.path=/usr/lib/jni  -Dgnu.io.rxtx.SerialPorts=/dev/ttyO1 -classpath /usr/share/java/ext/RXTXcomm.jar:clojure-1.5.0-master-SNAPSHOT.jar clojure.main
+(comment
+
+  (import '(gnu.io CommPort
+                   CommPortIdentifier
+                   SerialPort)
+          '(java.io Closeable
+                    BufferedReader
+                    InputStreamReader))
+
+  (defprotocol IReadLines
+    (read-a-line [r]))
+
+  (defn port [port-name & {:keys [baud] :or {baud 115200}}]
+    (let [port-id (CommPortIdentifier/getPortIdentifier port-name)
+          port (.open port-id (pr-str #'port) 2000)]
+      (.setSerialPortParams port baud SerialPort/DATABITS_8 SerialPort/STOPBITS_1 SerialPort/PARITY_NONE)
+      (let [ins (-> port .getInputStream InputStreamReader. BufferedReader.)
+            outs (.getOutputStream port)]
+        (reify
+          IReadLines
+          (read-a-line [_]
+            (.readLine ins))
+          Closeable
+          (close [_]
+            (try
+              (.close ins)
+              (finally
+                (try
+                  (.close outs)
+                  (finally
+                    (.close port))))))))))
+
+  )
